@@ -32,14 +32,19 @@ def env(monkeypatch):
             self.calldata = calldata
 
     vm.Return = Return
+    vm.Result = Return
 
-    def run_nondet_unsafe(producer, validator):
+    def run_nondet_safe(producer, validator):
         proposed = producer()
         if not validator(Return(proposed)):
             raise ConsensusRejected("Two independent scripted outputs disagree")
         return proposed
 
-    vm.run_nondet = run_nondet_unsafe
+    vm.run_nondet_default = run_nondet_safe
+
+    def unsafe_nondet(*args, **kwargs):
+        raise AssertionError("Unsafe run_nondet must never be used")
+    vm.run_nondet = unsafe_nondet
 
     def exec_prompt(prompt, *, response_format=None):
         assert response_format == "json", "GenLayer structured output must be explicitly requested"
