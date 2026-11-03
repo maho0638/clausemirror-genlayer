@@ -1,0 +1,9 @@
+[project]
+name = "clausemirror-genlayer"
+version = "0.1.0"
+description = "Public immutable multilingual semantic-drift receipts for GenLayer"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
