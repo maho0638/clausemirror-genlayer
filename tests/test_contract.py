@@ -98,22 +98,22 @@ def test_validator_invalid_output_rejects_without_state_change(env):
 
 def test_verifier_rejects_malformed_leader_return(env):
     cid = submit(env)
-    original = env.gl.vm.run_nondet
+    original = env.gl.vm.run_nondet_default
     def malicious_consensus(produce, verify):
         assert verify(env.gl.vm.Return({"verdict": "MATERIAL_DIFFERENCE", "note": ""})) is False
         assert verify(env.gl.vm.Return({"verdict": "MATERIAL_DIFFERENCE", "note": "x", "extra": 1})) is False
         assert verify(env.gl.vm.Return({"verdict": "MATERIAL_DIFFERENCE", "note": "x\x00"})) is False
         raise env.rejected("rejected malformed leader output")
-    env.gl.vm.run_nondet = malicious_consensus
+    env.gl.vm.run_nondet_default = malicious_consensus
     with pytest.raises(env.rejected):
         env.contract.review(cid)
     assert json.loads(env.contract.get_case(cid))["status"] == "PENDING"
-    env.gl.vm.run_nondet = original
+    env.gl.vm.run_nondet_default = original
 
 
 def test_consensus_return_is_revalidated(env):
     cid = submit(env)
-    env.gl.vm.run_nondet = lambda a,b: {"verdict": "EQUIVALENT", "note": ""}
+    env.gl.vm.run_nondet_default = lambda a,b: {"verdict": "EQUIVALENT", "note": ""}
     with pytest.raises(env.user_error):
         env.contract.review(cid)
     assert json.loads(env.contract.get_case(cid))["status"] == "PENDING"
@@ -239,7 +239,7 @@ def test_no_confidentiality_claims(env):
     assert SOURCE in env.contract.get_case(cid)  # document is public by design
 
 
-@pytest.mark.parametrize("bad_character", ["\ud800", "\udfff", "\x1b", "\x7f", "\u0085", "\u202e", "\u2067"])
+@pytest.mark.parametrize("bad_character", ["\ud800", "\udfff", "\x1b", "\x7f", "\u0085", "\u202e", "\u2067", "\u200b", "\u200d", "\ufeff"])
 def test_unsafe_unicode_is_rejected_in_user_clauses_and_context(env, bad_character):
     for field in ("source_clause", "target_clause", "context"):
         kwargs = dict(source_language="en", target_language="tr", source_clause=SOURCE,
@@ -287,3 +287,18 @@ def test_control_flow_invariants_over_many_sequential_cases(env):
         assert rec["parent_id"] == 0
         assert env.contract.get_author(cid) == "0xALICE"
     assert env.contract.get_total_cases() == 75
+
+
+def test_never_uses_unsafe_nondeterminism(env):
+    # In SDK 0.3 run_nondet is UNSAFE; only run_nondet_default has sandboxed validators.
+    case_id = submit(env)
+    env.responses.extend([decision(), decision()])
+    assert env.contract.review(case_id) == "MATERIAL_DIFFERENCE"
+
+
+def test_validator_disagreement_reverts_safely(env):
+    case_id = submit(env)
+    env.responses.extend([decision("EQUIVALENT"), decision("MATERIAL_DIFFERENCE")])
+    with pytest.raises(env.rejected):
+        env.contract.review(case_id)
+    assert json.loads(env.contract.get_case(case_id))["status"] == "PENDING"
