@@ -1,1 +1,47 @@
-The requested file reference is not currently visible. Use files.search or files.list to rediscover the file, then retry with a returned ref_id or file_id.
+name: ClauseMirror SDK03 verification
+"on":
+  push:
+    branches: [main, 'audit/**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  local-regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pytest
+        run: python -m pip install pytest
+      - name: Contract and test syntax
+        run: python -m compileall -q contracts tests
+      - name: Deterministic and SDK03 guardrail tests
+        run: python -m pytest tests/test_contract.py tests/test_sdk_api_regressions.py -q
+
+  genvm-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install official linter
+        run: python -m pip install --pre 'genvm-linter==0.11.1rc2'
+      - name: GenVM syntax and consensus AST lint
+        run: genvm-lint lint contracts/ClauseMirror.py
+      - name: GenVM SDK semantic validation
+        run: genvm-lint validate contracts/ClauseMirror.py
+
+  genlayer-direct:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install official direct-mode framework
+        run: python -m pip install --pre pytest 'genlayer-test==0.30.0rc2'
+      - name: Real GenLayer Direct SDK tests
+        run: python -m pytest tests/test_direct_sdk.py -q
