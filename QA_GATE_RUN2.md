@@ -1,0 +1,2 @@
+# ClauseMirror SDK 0.3 verification round two
+This branch is identical to main except for this QA marker. Verify linter AST and SDK semantics, in-memory persistent maps, and direct-mode runtime. No onchain operations. Do not merge this PR.
