@@ -56,7 +56,7 @@ def env(monkeypatch):
     seen = []
     runtime = types.SimpleNamespace(
         contract=types.SimpleNamespace(Contract=object),
-        storage=types.SimpleNamespace(TreeMap=FakeTreeMap),
+        storage=types.SimpleNamespace(TreeMap=FakeTreeMap, inmem_allocate=lambda t, *args, **kwargs: t(*args, **kwargs)),
         public=types.SimpleNamespace(write=lambda fn: fn, view=lambda fn: fn),
         message=types.SimpleNamespace(sender_address="0xALICE"),
         nondet=types.SimpleNamespace(exec_prompt=exec_prompt),
