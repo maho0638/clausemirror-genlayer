@@ -40,3 +40,10 @@ The contract must pass **official linter and real GenLayer Studio/GenVM multi-va
 ## SDK v0.3 compatibility upgrade
 
 3 November 2026: The project was adapted to the SDK 0.3 import/API changes using the official SDK API changelog: `import genlayer as gl`, `gl.contract.Contract`, `gl.storage.TreeMap`, plain integer initializers for `u32` storage, and `gl.vm.run_nondet` (the replacement for `run_nondet_unsafe`). The source was checked against the current SDK reference; official linter and Direct Mode execution were delegated to repository CI, and full Studio multi-validator testing remains separate and cannot be asserted without a transaction receipt.
+
+## Observed official CI failure / remediation
+
+- `https://github.com/maho0638/clausemirror-genlayer/actions/runs/41684508789`: 57 local checks and Python compilation passed on GitHub's Python 3.12 runner.
+- `genlayer-test` stable 0.29.2 failed during SDK artifact setup with `urllib.error.HTTPError: HTTP Error 404: Not Found` while downloading `v0.3.0-rc7/genvm-universal.tar.xz` before attempting to load ClauseMirror.
+- Linter was skipped in the original order. CI was revised to use the officially published September RC packages (`genvm-linter==0.11.1rc2`, `genlayer-test==0.30.0rc2`) and to run lint first. Passing results must be verified from a new workflow run.
+- No Studio consensus run or testnet finalization has occurred.
