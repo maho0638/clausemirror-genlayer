@@ -33,8 +33,9 @@ def _text_safe(value: str) -> bool:
             return False
         if 0x7F <= n <= 0x9F:
             return False
-        if n in (0x202A, 0x202B, 0x202C, 0x202D, 0x202E,
-                 0x2066, 0x2067, 0x2068, 0x2069):
+        if n in (0x200B, 0x200C, 0x200D, 0xFEFF,
+                 0x202A, 0x202B, 0x202C, 0x202D, 0x202E,
+                 0x2060, 0x2066, 0x2067, 0x2068, 0x2069):
             return False
     return True
 
@@ -172,7 +173,7 @@ class ClauseMirror(gl.contract.Contract):
         def produce():
             return _parse_assessment(gl.nondet.exec_prompt(task_prompt, response_format="json"))
 
-        def verify(leader_result) -> bool:
+        def verify(leader_result: gl.vm.Result) -> bool:
             if not isinstance(leader_result, gl.vm.Return):
                 return False
             try:
@@ -189,7 +190,7 @@ class ClauseMirror(gl.contract.Contract):
             # The leader's reasoning text is NOT checked for equivalence.
             return proposed["verdict"] == independent["verdict"]
 
-        result = _parse_assessment(gl.vm.run_nondet(produce, verify))
+        result = _parse_assessment(gl.vm.run_nondet_default(produce, verify))
         # Note is for human inspection only. We never assert that validator
         # consensus independently verified this explanation.
         record["status"] = "REVIEWED"
