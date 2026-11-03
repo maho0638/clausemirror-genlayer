@@ -57,6 +57,6 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install official GLSim and native SDK
-        run: python -m pip install --pre pytest cloudpickle 'genlayer-test[sim]==0.30.0rc2'
+        run: python -m pip install --pre pytest cloudpickle httpx2 'genlayer-test[sim]==0.30.0rc2'
       - name: Isolated RPC persistence and authorization checks (not GenVM)
         run: python -m pytest tests/test_glsim_rpc.py -q
