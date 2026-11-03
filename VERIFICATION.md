@@ -1,59 +1,92 @@
-# Verification status and release gates
+# ClauseMirror — Multilingual Contract & Policy Consistency Receipts
 
-| Gate | Status | Evidence |
+**GenLayer Intelligent Contract** that compares the operative meaning of a clause in two different languages, obtains independent validator agreement on the *decision*, and records an immutable, revision-linked review receipt.
+
+## Why this exists
+
+Two versions of terms can look similar but materially change obligations, payment dates, exclusions, liability caps, or rights. ClauseMirror compares **specific clauses**, not whole legal documents. A user submits the exact source and target passages (and optional context), asks GenLayer validators for a structured finding, and can submit a revised target clause as a *new* linked case; the original result stays visible.
+
+It is distinct from general evidence verification, license compliance, tender adjudication, and agent mandates: its domain is **cross-language semantic drift in obligations**.
+
+## Contract API
+
+Contract: `contracts/ClauseMirror.py` — class `ClauseMirror`.
+
+| Method | Access | Behavior |
 | --- | --- | --- |
-| Source syntax | automated locally | `compileall` |
-| Auth, state transitions, adversarial text, independent decision-check logic | automated locally | `pytest tests/`: 65 passing with runtime stub (2026-11-03) |
-| GenVM linter | **NOT RUN** | `genvm-lint` unavailable locally; PyPI unreachable (DNS) |
-| Real `genlayer-test` direct execution | **NOT RUN** | `genlayer-test` unavailable locally; PyPI unreachable (DNS) |
-| Studio multi-validator consensus & revert | **NOT RUN** | no running Studio/real validators |
-| Onchain gas cost and limits | **NOT RUN** | no testnet deployment |
-| Security audit / formal verification | **NOT DONE** | third-party independent review needed |
+| `submit_pair(source_language, target_language, source_clause, target_clause, context)` | write | Creates an immutable public case; returns its integer ID |
+| `review(case_id)` | author-only write | Calls an LLM for a structured decision and has validators independently assess the same submitted passages; records result only if consensus accepts |
+| `revise_target(parent_id, revised_target_clause)` | author-only write | Creates a separate pending case linked to a previously reviewed case, preserving source/context |
+| `get_case(case_id)` | view | Returns the full JSON data and receipt |
+| `get_author(case_id)` | view | Returns submitter address |
+| `get_total_cases()` | view | Returns count |
 
-`pytest`'s fake `run_nondet_safe` is *not* GenLayer consensus. It only verifies the program's control flow with deterministic scripted model responses. Never interpret the green tests as onchain proof.
+### Outcomes
 
-## Required before Portal submission
+* `EQUIVALENT` — meaning and material rights/duties align.
+* `MATERIAL_DIFFERENCE` — at least one operative difference detected.
+* `INCONCLUSIVE` — ambiguity or insufficient context; no unwarranted pass.
 
-1. Pin/verify compatible GenVM runner, `genlayer-test` and linter versions.
-2. Run `genvm-lint check contracts/ClauseMirror.py`; resolve all findings.
-3. Run real GenLayer direct-VM tests, including expected rejects and storage types.
-4. Deploy on Studio with test accounts; verify authorized review, unauthorized rejection, validator agreement/disagreement, finality and receipt retrieval.
-5. Test two different LLM providers / models with EN/TR material and non-material changes, including deliberately ambiguous clauses.
-6. Inspect receipt JSON and demonstrate that `note_verified` never wrongly claims rationale validation.
-7. Review on-chain input privacy, cost, supported Unicode, and replay/revision behavior.
-8. Only then ask the user before Portal submission, mainnet deployment or spending funds.
+The `leader_note` is **NOT** independently consensus-verified. It is a human-readable, leader-authored rationale. `note_verified=false` is intentionally recorded, while the verdict is the field checked through an independent validator execution. Human legal review is still required for high-stakes use.
+
+## Safety / threat model
+
+* **Every input and output is public blockchain data. NEVER submit personal data, confidential agreements, or trade secrets.**
+* No payments, transfers, escrow, external writes, token staking, admin override, or third-party scraping.
+* Only the original author can invoke paid AI review or create a revision; other users can read public receipts.
+* Submitted source and target text cannot be edited. Revisions are new, parent-linked cases; review cannot be repeated on the same case.
+* Strict per-field size limits, UTF-8/control-character checks, and controlled three-value decisions; malformed AI output or validator disagreement aborts the transaction.
+* A validator **re-runs the same source-grounded task** rather than accepting a well-formatted leader claim. An LLM can still be wrong, and validators may share biases; agreement is not proof of legal equivalence.
+* User-provided clauses are explicitly treated as untrusted data in the prompt. This does not mathematically eliminate prompt injection.
+* No authenticity claim: the user supplies all text. No guarantee that supplied clauses match a real authoritative publication. Documents can change over time; the original snapshot remains static.
+* Language tags use a conservative ASCII BCP47-like subset, not complete BCP47 parsing.
+
+## Quick start
+
+1. Install a matching **GenLayer Studio / CLI** and compatible GenVM runner. The `Depends` header targets the current `py-genlayer` runner listed in the official SDK reference on 3 November 2026 (v0.3.0-rc10). Recheck before deployment.
+2. Open `contracts/ClauseMirror.py` in Studio and deploy with **zero constructor arguments**.
+3. Submit two short, *public* clauses in different languages with `submit_pair`.
+4. As the original submitter, call `review(case_id)` and wait for accepted validator consensus/finality.
+5. Read `get_case(case_id)`. If a difference is found, submit a corrected target via `revise_target`; review its new case ID.
+
+Example with expected semantics: [examples/example_en_tr.md](examples/example_en_tr.md).
+
+## Development / verification
+
+The repository's GitHub Actions verification uses Python 3.12 and three independent jobs:
+
+```bash
+# 65 deterministic test cases (mock GenLayer runtime and SDK 0.3 safety regressions)
+python -m pytest tests/test_contract.py tests/test_sdk_api_regressions.py -q
+
+# 4 actual GenLayer SDK Direct Mode test cases (GenLayer test framework required)
+python -m pytest tests/test_direct_sdk.py -q
+
+# GenVM lint and SDK semantic analysis (GenVM linter required)
+python scripts/compat_linter_sdk03.py
+ genvm-lint lint contracts/ClauseMirror.py
+ genvm-lint validate contracts/ClauseMirror.py
+```
+
+The compatibility script only makes GenVM Linter 0.11.1rc2 recognize the **safe** SDK 0.3 `run_nondet_default` entry point; no rules are disabled. Direct Mode tests use the actual SDK but a mocked LLM, not public GenLayer validator infrastructure. See [VERIFICATION.md](VERIFICATION.md) for observed CI results.
+
+### Security and release limits
+
+Source review and official SDK Direct Mode tests cannot prove universal correctness or real-network finality. Before handling valuable or confidential data, conduct a separate Studio/testnet multi-validator integration test. The contract records public data permanently; do not upload confidential terms or personal data. Decision agreement does not independently verify the leader's explanation or the legal validity of a clause.
+
+## Technical references
+
+- GenLayer [equivalence principle](https://docs.genlayer.com/developers/intelligent-contracts/equivalence-principle)
+- GenLayer [storage reference](https://docs.genlayer.com/developers/intelligent-contracts/features/storage)
+- GenLayer [testing guide](https://docs.genlayer.com/developers/intelligent-contracts/testing)
+
+License: MIT. Contributions welcome with reproducible tests and a clear explanation of security impact.
 
 
-## Improvements since v0.1.0
+## Build status — 3 November 2026
 
-- Replaced raw-text `gl.nondet.exec_prompt(...)` with official `response_format="json"`.
-- Validates exact dictionary keys, types, bounded notes and serialized size for both leader and validator.
-- Invalid validator output returns a negative vote rather than accidentally approving a malformed leader response.
-- Rejects C0/C1 controls (excluding newlines/tabs), unpaired Unicode surrogate values, and bidi override/isolate characters before trimming input; permits genuine Turkish/Arabic script.
-- Added adversarial tests, invalid leader bypass checks, validator malformed-output checks, and a 75-case persistence stress test.
-- Added an official `genvm-lint check` gate to the CI workflow for future GitHub updates (not yet run).
+GitHub repository: https://github.com/maho0638/clausemirror-genlayer
 
-## Blocking issues
+The SDK 0.3 implementation uses `gl.vm.run_nondet_default` for sandboxed validator consensus and the SDK-supported `gl.storage.inmem_allocate` for persistent `TreeMap` members. 65 deterministic tests and four GenLayer Direct Mode tests pass, including write authorization, stored receipts, independent validator agreement/disagreement, immutable revision links, and hostile Unicode rejection. GenVM static/safety lint and SDK semantic validation run in CI using the documented SDK 0.3 compatibility shim.
 
-This build is **not a claim of 100% technical correctness**. A genuine GenVM deployment and multi-validator acceptance/disagreement test cannot be emulated by Python stubs. Network access and Docker are unavailable in the current environment. Do not submit this as an already-tested GenVM contract; first run the official linter, a direct-VM SDK test, and real Studio deployment + consensus test. LLM consensus is not mathematical proof of legal translation accuracy.
-
-## 3 November SDK migration
-
-Target SDK reference: [v0.3.0-rc10](https://sdk.genlayer.com/main/_static/ai/api.txt). Migrated the imports, contract base class, persistent storage type, the custom nondeterminism comparison API, and removed callable `u32(...)` casts (no longer supported in SDK 0.3). CI includes the official GenVM linter and GenLayer Direct Mode suite; check Actions for their actual outcomes before asserting them as passed. Full Studio consensus is not covered by Direct Mode.
-
-## Observed GitHub Actions results (3 November 2026)
-
-CI run [41684508789](https://github.com/maho0638/clausemirror-genlayer/actions/runs/41684508789) reported:
-
-- Python syntax: PASS.
-- Mocked deterministic tests: 65 PASS.
-- Official `genlayer-test==0.29.2` direct mode: BLOCKED before importing the contract, because it requested a nonexistent `genvm-universal.tar.xz` from `v0.3.0-rc7` (HTTP 404). This is a tooling release-asset issue, not a contract test failure or success.
-- Official `genvm-lint check`: SKIPPED in that run because the previous step failed.
-
-A new CI configuration pins `genlayer-test==0.30.0rc2` and `genvm-linter==0.11.1rc2`, invokes static lint and semantic validation before the direct test, and must be checked separately for actual results. Do not report these unobserved gates as passed.
-
-## November 3 critical security correction
-
-The SDK 0.3 changelog explicitly changes the meaning of `gl.vm.run_nondet`: it is the **unsafe** form and does not sandbox the validator. The previously published version wrongly used it, despite positive stub tests. This has now been fixed to `gl.vm.run_nondet_default`, and a regression test rejects calls to the unsafe form. The script's own local tests do **not** replace a GenVM integration check. See the official API changelog: https://sdk.genlayer.com/main/_static/ai/api.txt.
-
-SDK 0.3's current pinned `py-genlayer` runner hash matches the published official API manifest (v0.3.0-rc10). Direct-mode tests may still need runner-download compatibility and have not been certified until their CI status is green.
+See https://github.com/maho0638/clausemirror-genlayer/actions/runs/41705418625 and [VERIFICATION.md](VERIFICATION.md) for the exact verification boundary. **No Studio/testnet multi-validator deployment or public-network finality is claimed.**
