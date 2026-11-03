@@ -3,14 +3,14 @@
 | Gate | Status | Evidence |
 | --- | --- | --- |
 | Source syntax | automated locally | `compileall` |
-| Auth, state transitions, adversarial text, independent decision-check logic | automated locally | `pytest tests/`: 57 passing with runtime stub (2026-11-03) |
+| Auth, state transitions, adversarial text, independent decision-check logic | automated locally | `pytest tests/`: 65 passing with runtime stub (2026-11-03) |
 | GenVM linter | **NOT RUN** | `genvm-lint` unavailable locally; PyPI unreachable (DNS) |
 | Real `genlayer-test` direct execution | **NOT RUN** | `genlayer-test` unavailable locally; PyPI unreachable (DNS) |
 | Studio multi-validator consensus & revert | **NOT RUN** | no running Studio/real validators |
 | Onchain gas cost and limits | **NOT RUN** | no testnet deployment |
 | Security audit / formal verification | **NOT DONE** | third-party independent review needed |
 
-`pytest`'s fake `run_nondet_unsafe` is *not* GenLayer consensus. It only verifies the program's control flow with deterministic scripted model responses. Never interpret the green tests as onchain proof.
+`pytest`'s fake `run_nondet_safe` is *not* GenLayer consensus. It only verifies the program's control flow with deterministic scripted model responses. Never interpret the green tests as onchain proof.
 
 ## Required before Portal submission
 
@@ -46,8 +46,14 @@ Target SDK reference: [v0.3.0-rc10](https://sdk.genlayer.com/main/_static/ai/api
 CI run [41684508789](https://github.com/maho0638/clausemirror-genlayer/actions/runs/41684508789) reported:
 
 - Python syntax: PASS.
-- Mocked deterministic tests: 57 PASS.
+- Mocked deterministic tests: 65 PASS.
 - Official `genlayer-test==0.29.2` direct mode: BLOCKED before importing the contract, because it requested a nonexistent `genvm-universal.tar.xz` from `v0.3.0-rc7` (HTTP 404). This is a tooling release-asset issue, not a contract test failure or success.
 - Official `genvm-lint check`: SKIPPED in that run because the previous step failed.
 
 A new CI configuration pins `genlayer-test==0.30.0rc2` and `genvm-linter==0.11.1rc2`, invokes static lint and semantic validation before the direct test, and must be checked separately for actual results. Do not report these unobserved gates as passed.
+
+## November 3 critical security correction
+
+The SDK 0.3 changelog explicitly changes the meaning of `gl.vm.run_nondet`: it is the **unsafe** form and does not sandbox the validator. The previously published version wrongly used it, despite positive stub tests. This has now been fixed to `gl.vm.run_nondet_default`, and a regression test rejects calls to the unsafe form. The script's own local tests do **not** replace a GenVM integration check. See the official API changelog: https://sdk.genlayer.com/main/_static/ai/api.txt.
+
+SDK 0.3's current pinned `py-genlayer` runner hash matches the published official API manifest (v0.3.0-rc10). Direct-mode tests may still need runner-download compatibility and have not been certified until their CI status is green.
