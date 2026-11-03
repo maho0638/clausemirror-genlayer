@@ -111,8 +111,8 @@ class ClauseMirror(gl.contract.Contract):
 
     def __init__(self):
         self.next_case_id = 1
-        self.records = gl.storage.TreeMap[u32, str]()
-        self.authors = gl.storage.TreeMap[u32, Address]()
+        self.records = gl.storage.inmem_allocate(gl.storage.TreeMap[u32, str])
+        self.authors = gl.storage.inmem_allocate(gl.storage.TreeMap[u32, Address])
 
     def _load(self, case_id: u32) -> dict:
         _require(0 < case_id < self.next_case_id, "Unknown case")
