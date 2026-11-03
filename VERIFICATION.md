@@ -40,3 +40,14 @@ This build is **not a claim of 100% technical correctness**. A genuine GenVM dep
 ## 3 November SDK migration
 
 Target SDK reference: [v0.3.0-rc10](https://sdk.genlayer.com/main/_static/ai/api.txt). Migrated the imports, contract base class, persistent storage type, the custom nondeterminism comparison API, and removed callable `u32(...)` casts (no longer supported in SDK 0.3). CI includes the official GenVM linter and GenLayer Direct Mode suite; check Actions for their actual outcomes before asserting them as passed. Full Studio consensus is not covered by Direct Mode.
+
+## Observed GitHub Actions results (3 November 2026)
+
+CI run [41684508789](https://github.com/maho0638/clausemirror-genlayer/actions/runs/41684508789) reported:
+
+- Python syntax: PASS.
+- Mocked deterministic tests: 57 PASS.
+- Official `genlayer-test==0.29.2` direct mode: BLOCKED before importing the contract, because it requested a nonexistent `genvm-universal.tar.xz` from `v0.3.0-rc7` (HTTP 404). This is a tooling release-asset issue, not a contract test failure or success.
+- Official `genvm-lint check`: SKIPPED in that run because the previous step failed.
+
+A new CI configuration pins `genlayer-test==0.30.0rc2` and `genvm-linter==0.11.1rc2`, invokes static lint and semantic validation before the direct test, and must be checked separately for actual results. Do not report these unobserved gates as passed.
