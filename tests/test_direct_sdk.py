@@ -26,10 +26,10 @@ def test_native_creation_persistence_and_access_control(direct_vm, direct_deploy
 
 def test_native_review_and_validator_agreement(direct_vm, direct_deploy):
     direct_vm.check_pickling = True
-    direct_vm.mock_llm(r".*", json.dumps({
+    direct_vm.mock_llm(r".*", json.dumps(json.dumps({
         "verdict": "MATERIAL_DIFFERENCE",
         "note": "Cancellation deadline differs (14 days versus 7 days).",
-    }))
+    })))
     contract = direct_deploy("contracts/ClauseMirror.py")
     cid = contract.submit_pair("en", "tr", SOURCE, TARGET, "Public fictional example")
     assert contract.review(cid) == "MATERIAL_DIFFERENCE"
@@ -37,3 +37,9 @@ def test_native_review_and_validator_agreement(direct_vm, direct_deploy):
     assert record["status"] == "REVIEWED"
     assert record["note_verified"] is False
     assert direct_vm.run_validator() is True
+    direct_vm.clear_mocks()
+    direct_vm.mock_llm(r".*", json.dumps(json.dumps({
+        "verdict": "EQUIVALENT",
+        "note": "This validator disagrees with the proposed verdict.",
+    })))
+    assert direct_vm.run_validator() is False
