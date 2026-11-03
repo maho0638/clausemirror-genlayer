@@ -47,3 +47,16 @@ jobs:
         run: python -m pip install --pre pytest cloudpickle 'genlayer-test==0.30.0rc2'
       - name: Real GenLayer Direct SDK tests
         run: python -m pytest tests/test_direct_sdk.py -q
+
+  glsim-rpc-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install official GLSim and native SDK
+        run: python -m pip install --pre pytest cloudpickle 'genlayer-test[sim]==0.30.0rc2'
+      - name: Isolated RPC persistence and authorization checks (not GenVM)
+        run: python -m pytest tests/test_glsim_rpc.py -q
