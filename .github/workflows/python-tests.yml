@@ -44,6 +44,6 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install official direct-mode framework
-        run: python -m pip install --pre pytest 'genlayer-test==0.30.0rc2'
+        run: python -m pip install --pre pytest cloudpickle 'genlayer-test==0.30.0rc2'
       - name: Real GenLayer Direct SDK tests
         run: python -m pytest tests/test_direct_sdk.py -q
