@@ -6,6 +6,8 @@ on:
       - ".github/workflows/studio-localnet.yml"
       - "tests/test_studio_gate.py"
       - "gltest.config.yaml"
+      - ".github/studio-ci-migration.yml"
+      - ".github/genvm-web-local.yaml"
       - "contracts/ClauseMirror.py"
   workflow_dispatch:
 
