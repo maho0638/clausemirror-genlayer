@@ -1,20 +1,27 @@
-# Portal submission — ClauseMirror
+# GenLayer Portal contribution — ClauseMirror
 
-**Category:** Developer / Intelligent Contracts
-
+**Category:** Developer → Intelligent Contracts
 **Title:** ClauseMirror — Bilingual Clause Meaning Consensus
 
-**Notes (under 1,000 characters):**
+## Notes / Description (below 1,000 characters)
 
-ClauseMirror is a reusable GenLayer Intelligent Contract for comparing the operative meaning of public clauses written in two different languages. The author submits both clauses, and the contract requests an AI judgment: SAME, DIFFERENT, or UNCLEAR. Each validator independently re-evaluates the same user-supplied text; a mismatched decisive verdict is rejected instead of stored. Immutable public records, author-only one-time review, bounded inputs, strict AI result schemas, and safe nondeterministic execution make the comparison transparent and replay-resistant. CI verified 3 logic tests, 3 official GenLayer Direct SDK tests (including positive/negative validator simulation), GenVM lint, and semantic validation. Direct tests are in-process, not live network finality. This is not legal advice or proof of document authenticity.
+ClauseMirror is a deployed GenLayer Intelligent Contract for comparing the operative meaning of two public clauses in different languages. A requester records both clauses and requests a one-time AI review. GenLayer validators independently assess the same evidence and must agree on the controlled verdict SAME, DIFFERENT, or UNCLEAR before the result is stored. Duplicate IDs, unauthorized review, repeated reviews, malformed AI responses, and unsafe Unicode are rejected. The original texts remain queryable. Unlike a translation demo, this primitive creates durable review receipts and verifies a decisive semantic outcome through real consensus. On Studionet, deployment, submission, review and read-back succeeded; the 14-day versus 7-day cancellation example returned DIFFERENT. It is not legal advice or document-authenticity proof.
 
-**Evidence URLs** (paste each into a separate URL entry):
+## Required evidence (enter as separate URLs)
 
-1. Code: https://github.com/maho0638/clausemirror-genlayer/blob/rebuild/simple-clausemirror-20261104/contracts/ClauseMirror.py
-2. Repository and review: https://github.com/maho0638/clausemirror-genlayer/pull/10
-3. Official SDK + GenVM CI: https://github.com/maho0638/clausemirror-genlayer/actions/runs/41823445956
-4. Source unit tests: https://github.com/maho0638/clausemirror-genlayer/blob/rebuild/simple-clausemirror-20261104/tests/test_direct_sdk.py
+**GitHub Repository**
+https://github.com/maho0638/clausemirror-genlayer
 
-**Verification boundary:** Official Direct Mode exercises GenLayer SDK deployment/storage/validator callbacks in-process. It is not a finalized live GenVM consensus transaction or a signed on-chain explorer receipt. Do not claim live deployment.
+**GenLayer Explorer Contract**
+https://explorer-studio.genlayer.com/address/0x2c3DFCAF3588b15c3be25Bda056C7bB4e6406B86
 
-**Deployment:** No public deploy, gas payment, or Portal submission was made.
+## Additional evidence
+
+- Live network CI: https://github.com/maho0638/clausemirror-genlayer/actions/runs/41828772045
+- Live source code: https://github.com/maho0638/clausemirror-genlayer/blob/fix/studionet-compatible-20261104/contracts/ClauseMirror.py
+- Submission tx: https://explorer-studio.genlayer.com/tx/0xdaab6e261fc7eb2d2ab8b3570d94bfdb546585abab51aaa5c321c12760ae1a9c
+- Review tx: https://explorer-studio.genlayer.com/tx/0x8244c8493ff883420a0918dd369cb75f79fb1b95e398e7b8ac5784313b5e1331
+
+## Limits
+
+Live proof is on public **Studionet**, not Bradbury or mainnet. Independent validator execution does not prove semantic correctness. Never submit private legal data. No Portal submission was made automatically.

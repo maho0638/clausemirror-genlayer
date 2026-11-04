@@ -1,39 +1,33 @@
-# ClauseMirror
+# ClauseMirror — Bilingual Clause Meaning Consensus
 
-A minimal GenLayer Intelligent Contract that compares the meaning of **two public clauses in different languages** and records a validator-reviewed structured verdict.
+**Live-verified GenLayer Intelligent Contract, public Studionet.**
 
-## What it does
+ClauseMirror compares two *user-supplied public clauses* in different languages. It records **SAME**, **DIFFERENT**, or **UNCLEAR** only when GenLayer validators re-evaluate and accept the same bounded verdict.
 
-- A user submits two texts with language labels.
-- The submitter requests one AI review. GenLayer's nondeterministic execution independently checks the proposed verdict across validators.
-- Only the exact decision (`SAME`, `DIFFERENT`, `UNCLEAR`) is stored, not a fabricated legal justification.
-- Anyone can read the public record. Only the original submitter may invoke a review, and only once.
+## Contract API
 
-## Contract
+Source: `contracts/ClauseMirror.py` (runner aligned with accepted Sightline project).
 
-`contracts/ClauseMirror.py` — class `ClauseMirror`
+- `submit(case_id, source_language, target_language, source_clause, target_clause)` — create a unique public case, attributed to submitter.
+- `review(case_id)` — requester-only; independently re-execute AI comparison under GenLayer validator consensus, once.
+- `get_case(case_id)` — read stored JSON, preserving the original input clauses and controlled verdict.
 
-1. `submit(source_language, target_language, source_clause, target_clause)` returns a case ID.
-2. `review(case_id)` returns a decision.
-3. `get_case(case_id)` returns public JSON.
-4. `total_cases()` returns the count.
+Each public case ID is caller-generated and must be unique. Valid language tags are ASCII letters (2–12 chars). Input clauses are limited to 1,200 characters. Invisible Unicode controls are blocked. There are no transfers, escrow or administrative exceptions.
 
-## Example
+**Limitations:** A validator-approved AI verdict is not legal advice, a factual authenticity certificate or an endorsement of the supplied clauses. Everything submitted is public blockchain data: do not publish confidential or personal information.
 
-`submit("en", "tr", "Cancellation requires 14 days notice.", "Iptal icin 7 gun onceden bildirim gerekir.")`. The likely result is `DIFFERENT`, but no specific model outcome is guaranteed.
+## Verified live Studionet execution
 
-## Limitations
+- Contract: `0x2c3DFCAF3588b15c3be25Bda056C7bB4e6406B86`
+- [GenLayer Explorer](https://explorer-studio.genlayer.com/address/0x2c3DFCAF3588b15c3be25Bda056C7bB4e6406B86)
+- Submitted pair: `0xdaab6e261fc7eb2d2ab8b3570d94bfdb546585abab51aaa5c321c12760ae1a9c`
+- Reviewed pair: `0x8244c8493ff883420a0918dd369cb75f79fb1b95e398e7b8ac5784313b5e1331`
+- Read-back: `DIFFERENT` for 14-day vs 7-day cancellation example
+- [Successful end-to-end network run](https://github.com/maho0638/clausemirror-genlayer/actions/runs/41828772045)
+- Local Direct Mode and GenVM lint: `.github/workflows/checks.yml`; hosted network proof: `.github/workflows/studionet.yml`
 
-This compares **user-supplied** texts. It does not verify official source documents, provide legal advice, prove correctness, or authenticate authors. Model consensus is agreement, not legal truth. All inputs are public on-chain; **never include private contracts or personal information**. No payments, escrow, browsing or autonomous actions.
+The testnet uses development accounts. No mainnet transaction is claimed.
 
-## Testing
+## Portal submission
 
-```bash
-python -m pip install pytest
-python -m compileall -q contracts tests
-pytest -q tests
-```
-
-Unit tests use a mocked GenLayer host and do **not** establish finalized on-chain validator consensus. Verify with a compatible GenVM release before any Portal claim of live execution.
-
-This clean rebuild intentionally excludes the old multi-service Studio/Docker CI experiments.
+See [SUBMISSION.md](SUBMISSION.md) for the ready-to-paste title, concise English description and required repository + explorer evidence.
