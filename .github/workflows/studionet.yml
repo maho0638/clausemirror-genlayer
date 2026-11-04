@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install official GenLayer network harness
-        run: python -m pip install --pre pytest cloudpickle 'genlayer-test==0.30.0rc2'
+        run: python -m pip install 'genlayer-py @ git+https://github.com/genlayerlabs/genlayer-py@v0.18' 'genlayer-test @ git+https://github.com/genlayerlabs/genlayer-testing-suite@v0.29'
       - name: Record exact deployed contract source
         run: sha256sum contracts/*.py
       - name: Deploy and prove public Studionet transaction lifecycle
