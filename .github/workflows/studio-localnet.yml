@@ -115,7 +115,7 @@ jobs:
           exit 1
 
       - name: Bring up consensus worker and prove five local validators
-        timeout-minutes: 7
+        timeout-minutes: 10
         run: |
           # JSON-RPC can respond to eth_chainId before its Docker healthcheck
           # changes from 'unhealthy' to 'healthy'. Compose refuses to start
@@ -132,14 +132,23 @@ jobs:
           done
           test "$(docker inspect -f '{{.State.Health.Status}}' genlayer-jsonrpc-1)" = "healthy"
           docker compose -p genlayer up -d consensus-worker
-          for n in $(seq 1 24); do
-            if [ "$(docker inspect -f '{{.State.Running}}' genlayer-consensus-worker-1 2>/dev/null)" = "true" ]; then
-              echo "Consensus worker container is running"
+          # Running=true is NOT enough: worker can crash and restart forever
+          # (previous CI logs: KeyError VITE_FINALITY_WINDOW).
+          for n in $(seq 1 90); do
+            worker_health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' genlayer-consensus-worker-1 2>/dev/null || echo absent)"
+            if [ "$worker_health" = "healthy" ]; then
+              echo "Consensus worker health endpoint passed"
               break
             fi
+            if [ "$worker_health" = "unhealthy" ]; then
+              docker logs --tail 100 genlayer-consensus-worker-1 || true
+              echo "::error::Consensus worker is unhealthy"
+              exit 1
+            fi
+            echo "Worker readiness $n: $worker_health"
             sleep 5
           done
-          test "$(docker inspect -f '{{.State.Running}}' genlayer-consensus-worker-1)" = "true"
+          test "$(docker inspect -f '{{.State.Health.Status}}' genlayer-consensus-worker-1)" = "healthy"
           # The legacy 'up' often aborts before reaching --reset-validators.
           # Seed deterministic mocked validators as in the official Studio
           # integration tests. Random validator creation requires live LLM
