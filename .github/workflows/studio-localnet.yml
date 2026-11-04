@@ -92,6 +92,12 @@ jobs:
           docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' || true
           echo "--- Exited containers ---"
           docker ps -a --format 'table {{.Names}}\t{{.Status}}' || true
+          echo "--- Failed database migration logs (latest 100 lines) ---"
+          docker logs --tail 100 genlayer-database-migration-1 2>&1 || true
+          echo "--- Postgres logs (latest 40 lines) ---"
+          docker logs --tail 40 genlayer-postgres-1 2>&1 || true
+          echo "--- Hardhat logs (latest 20 lines) ---"
+          docker logs --tail 20 genlayer-hardhat-1 2>&1 || true
           echo "--- Toolchain ---"
           genlayer --version || true
           echo "No remote or public network transactions were authorized."
