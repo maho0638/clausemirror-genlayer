@@ -26,7 +26,7 @@ def test_contract_never_calls_unsafe_nondet_sdk03():
 
 def test_contract_pins_validated_runner_and_sdk03_public_api():
     text = FILE.read_text(encoding='utf-8')
-    assert text.startswith('# { "Depends": "py-genlayer:babwp9t37jw9g4j2bccgn14g6x7x9s1f7dsmh7emvz735pz4zxa0" }')
+    assert text.startswith('# v0.3.0\n# { "Depends": "py-genlayer:babwp9t37jw9g4j2bccgn14g6x7x9s1f7dsmh7emvz735pz4zxa0" }')
     assert 'class ClauseMirror(gl.contract.Contract):' in text
     assert '@gl.public.write' in text
     assert '@gl.public.view' in text
