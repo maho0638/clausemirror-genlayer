@@ -51,11 +51,12 @@ jobs:
           genlayer --version
           python -m pip install --pre pytest cloudpickle 'genlayer-test==0.30.0rc2'
 
-      - name: Initialize disposable five-validator GenLayer Studio
+      - name: Start disposable headless Studio without interactive init
         timeout-minutes: 14
         run: |
-          timeout 780s genlayer init --headless --numValidators 5
-          timeout 240s genlayer up --headless --numValidators 5
+          # Official CLI init always prompts, including on fresh CI runners.
+          # Post-install created the .env; this starts Docker without prompts.
+          timeout 780s genlayer up --headless --numValidators 5
 
       - name: Require healthy LOCALNET with correct chain ID
         timeout-minutes: 5
