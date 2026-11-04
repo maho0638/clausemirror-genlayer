@@ -1,19 +1,13 @@
-name: Simple contract checks
+name: Contract verification
 
 on:
   push:
-    paths:
-      - 'contracts/**'
-      - 'tests/**'
-      - '.github/workflows/checks.yml'
+    branches: [main]
   pull_request:
-    paths:
-      - 'contracts/**'
-      - 'tests/**'
-      - '.github/workflows/checks.yml'
+  workflow_dispatch:
 
 jobs:
-  tests:
+  logic:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,4 +16,26 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install pytest
       - run: python -m compileall -q contracts tests
-      - run: python -m pytest -q tests
+      - run: python -m pytest -q tests/test_clausemirror.py
+
+  genvm-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --pre 'genvm-linter==0.11.1rc2'
+      - run: python scripts/compat_linter_sdk03.py
+      - run: genvm-lint lint contracts/ClauseMirror.py
+      - run: genvm-lint validate contracts/ClauseMirror.py
+
+  real-sdk-direct:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --pre pytest cloudpickle 'genlayer-test==0.30.0rc2'
+      - run: python -m pytest -q tests/test_direct_sdk.py
