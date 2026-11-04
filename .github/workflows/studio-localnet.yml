@@ -165,7 +165,7 @@ jobs:
           # without contacting live model providers. The independent test
           # transactions also send a five-validator mocked context.
           mock_response = {
-              "nondet_exec_prompt": {
+              "response": {
                   "independent multilingual clause-comparison reviewer": json.dumps({
                       "verdict": "MATERIAL_DIFFERENCE",
                       "note": "The cancellation period differs (14 vs 7 days).",
@@ -192,11 +192,13 @@ jobs:
           PY
 
       - name: Verify genuine GenVM five-validator local Studio transactions
-        timeout-minutes: 7
+        timeout-minutes: 12
         env:
           CLAUSEMIRROR_ENABLE_STUDIO_TESTS: "1"
         run: |
-          timeout 390s gltest tests/test_studio_gate.py -v -s --network localnet --default-wait-interval 1500 --default-wait-retries 30
+          # A real GenVM worker compiles several WASM variants on cold startup.
+          # SDK default of 30 * 1500ms can time out even on a valid local tx.
+          timeout 660s gltest tests/test_studio_gate.py -v -s --network localnet --default-wait-interval 1500 --default-wait-retries 90
 
       - name: Capture local Studio diagnostic summary
         if: always()
