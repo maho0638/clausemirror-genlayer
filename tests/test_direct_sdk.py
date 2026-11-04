@@ -1,83 +1,63 @@
-"""Official genlayer-test direct-mode checks, executed in CI.
-
-Unlike tests/test_contract.py these fixtures use the real GenLayer direct-mode
-runtime, so deployment, storage and ABI handling are exercised in-process.
-This is NOT a Studio multi-validator network test.
-"""
+"""Official GenLayer SDK Direct Mode checks (same runner/API as live Studionet)."""
 import json
-
-SOURCE = "The customer may cancel within 14 calendar days and receive a full refund."
-TARGET = "Müşteri 7 takvim günü içinde iptal ederek tam ücret iadesi alabilir."
+import pytest
 
 
-def test_native_creation_persistence_and_access_control(direct_vm, direct_deploy, direct_bob):
-    direct_vm.check_pickling = True
-    contract = direct_deploy("contracts/ClauseMirror.py")
-    cid = contract.submit_pair("en", "tr", SOURCE, TARGET, "Public fictional example")
-    assert cid == 1
-    record = json.loads(contract.get_case(cid))
-    assert record["status"] == "PENDING"
-    assert record["target_clause"] == TARGET
-    assert contract.get_total_cases() == 1
-    direct_vm.sender = direct_bob
-    with direct_vm.expect_revert("Only author may request review"):
-        contract.review(cid)
+def _mock(vm, verdict):
+    vm.clear_mocks()
+    vm.mock_llm(r"(?s).*Compare the meanings of these user-supplied clauses.*",
+                json.dumps({"verdict": verdict}))
 
 
-def test_native_review_and_validator_agreement(direct_vm, direct_deploy):
-    direct_vm.check_pickling = True
-    direct_vm.mock_llm(r".*", json.dumps(json.dumps({
-        "verdict": "MATERIAL_DIFFERENCE",
-        "note": "Cancellation deadline differs (14 days versus 7 days).",
-    })))
-    contract = direct_deploy("contracts/ClauseMirror.py")
-    cid = contract.submit_pair("en", "tr", SOURCE, TARGET, "Public fictional example")
-    assert contract.review(cid) == "MATERIAL_DIFFERENCE"
-    record = json.loads(contract.get_case(cid))
-    assert record["status"] == "REVIEWED"
-    assert record["note_verified"] is False
+def _create(contract):
+    contract.submit(
+        "public-case-001", "en", "tr",
+        "The customer can cancel the order within fourteen calendar days.",
+        "Musteri siparisi yedi takvim gunu icinde iptal edebilir."
+    )
+
+
+def test_submit_and_public_receipt(direct_deploy):
+    c = direct_deploy("contracts/ClauseMirror.py")
+    _create(c)
+    data = json.loads(c.get_case("public-case-001"))
+    assert data["verdict"] == "PENDING"
+    assert data["source_language"] == "en"
+    assert data["target_language"] == "tr"
+
+
+def test_ai_review_validator_agreement_and_disagreement(direct_vm, direct_deploy):
+    c = direct_deploy("contracts/ClauseMirror.py")
+    _create(c)
+    _mock(direct_vm, "DIFFERENT")
+    c.review("public-case-001")
+    assert json.loads(c.get_case("public-case-001"))["verdict"] == "DIFFERENT"
     assert direct_vm.run_validator() is True
-    direct_vm.clear_mocks()
-    direct_vm.mock_llm(r".*", json.dumps(json.dumps({
-        "verdict": "EQUIVALENT",
-        "note": "This validator disagrees with the proposed verdict.",
-    })))
+    _mock(direct_vm, "SAME")
     assert direct_vm.run_validator() is False
 
 
-
-def test_native_revision_chain_immutability_and_owner_permission(direct_vm, direct_deploy, direct_bob):
-    direct_vm.mock_llm(r".*", json.dumps(json.dumps({
-        "verdict": "MATERIAL_DIFFERENCE",
-        "note": "The cancellation deadline differs.",
-    })))
-    contract = direct_deploy("contracts/ClauseMirror.py")
-    original_id = contract.submit_pair("en", "tr", SOURCE, TARGET, "Public fictional example")
-    assert contract.review(original_id) == "MATERIAL_DIFFERENCE"
-    before = contract.get_case(original_id)
-    corrected = "Müşteri 14 takvim günü içinde iptal ederek tam ücret iadesi alabilir."
-
+def test_owner_and_replay_are_blocked(direct_vm, direct_deploy, direct_bob):
+    c = direct_deploy("contracts/ClauseMirror.py")
+    _create(c)
+    owner = direct_vm.sender
     direct_vm.sender = direct_bob
-    with direct_vm.expect_revert("Only author may revise"):
-        contract.revise_target(original_id, corrected)
-    assert contract.get_total_cases() == 1
-
-    direct_vm.sender = contract.get_author(original_id)
-    new_id = contract.revise_target(original_id, corrected)
-    assert new_id == 2
-    assert contract.get_case(original_id) == before
-    new_case = json.loads(contract.get_case(new_id))
-    assert new_case["parent_id"] == original_id
-    assert new_case["target_clause"] == corrected
-    assert new_case["status"] == "PENDING"
-    with direct_vm.expect_revert("Review parent before revision"):
-        contract.revise_target(new_id, TARGET)
+    with direct_vm.expect_revert("Only submitter can review"):
+        c.review("public-case-001")
+    direct_vm.sender = owner
+    _mock(direct_vm, "DIFFERENT")
+    c.review("public-case-001")
+    with direct_vm.expect_revert("Already reviewed"):
+        c.review("public-case-001")
+    with direct_vm.expect_revert("Case already exists"):
+        _create(c)
 
 
-def test_native_rejects_format_controls_and_same_language(direct_vm, direct_deploy):
-    contract = direct_deploy("contracts/ClauseMirror.py")
-    with direct_vm.expect_revert("Source and target languages must differ"):
-        contract.submit_pair("en", "EN", SOURCE, TARGET, "")
-    with direct_vm.expect_revert("Source clause contains unsafe Unicode/control characters"):
-        contract.submit_pair("en", "tr", SOURCE + "\u202e", TARGET, "")
-    assert contract.get_total_cases() == 0
+def test_reject_invalid_languages_and_controls(direct_vm, direct_deploy):
+    c = direct_deploy("contracts/ClauseMirror.py")
+    with direct_vm.expect_revert("Invalid language pair"):
+        c.submit("case-1", "en", "EN", "The deadline is fourteen days.", "The deadline is seven days.")
+    with direct_vm.expect_revert("Disallowed control characters"):
+        c.submit("case-2", "en", "tr", "The deadline is fourteen days.\u202e", "The deadline is seven days.")
+    with direct_vm.expect_revert("Case not found"):
+        c.get_case("missing")

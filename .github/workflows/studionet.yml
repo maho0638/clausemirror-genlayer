@@ -1,0 +1,24 @@
+name: ClauseMirror live Studionet deployment proof
+
+on:
+  # Manual only: avoids unintentional repeat contract deployments / test GEN fees.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-studionet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 48
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install official GenLayer network harness
+        run: python -m pip install 'genlayer-py @ git+https://github.com/genlayerlabs/genlayer-py@v0.18' 'genlayer-test @ git+https://github.com/genlayerlabs/genlayer-testing-suite@v0.29'
+      - name: Record exact deployed contract source
+        run: sha256sum contracts/*.py
+      - name: Deploy and prove public Studionet transaction lifecycle
+        run: gltest tests/integration/test_studionet.py -v -s --network studionet

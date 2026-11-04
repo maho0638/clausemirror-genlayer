@@ -1,0 +1,27 @@
+name: GenLayer contract verification
+on:
+  push:
+    branches: [main, 'fix/**', 'rebuild/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  direct-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install identical SDK generation used by accepted Sightline
+        run: |
+          python -m pip install 'genlayer-py @ git+https://github.com/genlayerlabs/genlayer-py@v0.18' 'genlayer-test @ git+https://github.com/genlayerlabs/genlayer-testing-suite@v0.29' 'genvm-linter @ git+https://github.com/genlayerlabs/genvm-linter@main' pytest
+      - name: Python syntax
+        run: python -m compileall -q contracts tests
+      - name: Real GenLayer SDK Direct tests
+        run: python -m pytest -q tests/test_direct_sdk.py
+      - name: GenVM static contract check
+        run: genvm-lint check contracts/ClauseMirror.py
