@@ -1,0 +1,29 @@
+# Based on the official GenLayer Studio local development GenVM web config.
+# Applies only to the ephemeral GitHub Actions localnet (never a public RPC).
+bind_address: 127.0.0.1:3032
+webdriver_host: http://webdriver:4444
+lua_script_path: ${exeDir}/../config/genvm-web-default.lua
+vm_count: 6
+lua_path: ${exeDir}/../lib/genvm-lua/?.lua
+signer_url: "#{signerUrl}"
+signer_headers: {}
+threads: 4
+blocking_threads: 16
+log_disable: ""
+session_create_request: |
+  {
+    "capabilities": {
+      "alwaysMatch": {
+        "browserName": "firefox",
+        "moz:firefoxOptions": {
+          "args": ["--headless"]
+        }
+      }
+    }
+  }
+extra_tld: []
+always_allow_hosts:
+  - "localhost"
+  - "127.0.0.1"
+  - "host.docker.internal"
+  - "anvil-local"
