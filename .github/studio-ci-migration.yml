@@ -1,0 +1,11 @@
+# CI-only bridge: legacy CLI compose only sets DB_URL, while the
+# current GenLayer database migration reads individual DB* variables.
+# All services are ephemeral on a GitHub-hosted Docker runner.
+services:
+  database-migration:
+    environment:
+      DBUSER: ${DBUSER:-postgres}
+      DBPASSWORD: ${DBPASSWORD:-postgres}
+      DBHOST: postgres
+      DBPORT: "5432"
+      DBNAME: ${DBNAME:-genlayer_state}
