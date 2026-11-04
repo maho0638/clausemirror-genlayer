@@ -141,8 +141,9 @@ jobs:
           done
           test "$(docker inspect -f '{{.State.Running}}' genlayer-consensus-worker-1)" = "true"
           # The legacy 'up' often aborts before reaching --reset-validators.
-          # Query the real local RPC, create only missing isolated validators,
-          # then assert exactly five. No live provider calls are made here.
+          # Seed deterministic mocked validators as in the official Studio
+          # integration tests. Random validator creation requires live LLM
+          # providers; GitHub CI intentionally contains no paid API keys.
           python - <<'PY'
           import json
           from urllib.request import Request, urlopen
@@ -158,10 +159,34 @@ jobs:
 
           count = int(rpc("sim_countValidators"))
           print(f"Validators before local bootstrap: {count}")
-          if count == 0:
-              print("Creating 5 LOCAL validators for mocked Studio tests")
-              rpc("sim_createRandomValidators", [5, 1, 10, [], []])
-              count = int(rpc("sim_countValidators"))
+          assert count == 0, "Refusing to alter a nonempty local validator registry"
+          # Mirrors upstream genlayer-studio/tests/integration/icontracts/
+          # conftest.py: sim_createValidator accepts an explicit mock_response
+          # without contacting live model providers. The independent test
+          # transactions also send a five-validator mocked context.
+          mock_response = {
+              "nondet_exec_prompt": {
+                  "independent multilingual clause-comparison reviewer": json.dumps({
+                      "verdict": "MATERIAL_DIFFERENCE",
+                      "note": "The cancellation period differs (14 vs 7 days).",
+                  }),
+              },
+          }
+          for i in range(5):
+              created = rpc("sim_createValidator", [
+                  8,
+                  "openai",
+                  "gpt-4o",
+                  {"temperature": 0.75, "max_tokens": 500},
+                  "openai-compatible",
+                  {
+                      "api_key_env_var": "OPENAIKEY",
+                      "api_url": "https://api.openai.com",
+                      "mock_response": mock_response,
+                  },
+              ])
+              print(f"Created mocked local validator {i+1}: {created.get('address', 'unknown')}")
+          count = int(rpc("sim_countValidators"))
           print(f"Validators after local bootstrap: {count}")
           assert count == 5, f"Expected exactly five local validators, got {count}"
           PY
