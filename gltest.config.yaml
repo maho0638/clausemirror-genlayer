@@ -1,0 +1,10 @@
+# Local, disposable Docker-based GenLayer Studio only.
+# Never replace this endpoint with a hosted/public network for the CI release gate.
+networks:
+  default: localnet
+  localnet:
+    url: "http://127.0.0.1:4000/api"
+    leader_only: false
+paths:
+  contracts: "contracts"
+  artifacts: "artifacts"
