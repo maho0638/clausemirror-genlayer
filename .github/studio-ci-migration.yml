@@ -13,3 +13,8 @@ services:
   # Keep the optional dev-chain service on its existing published tag.
   hardhat:
     image: yeagerai/simulator-hardhat:latest
+  # Upstream CLI replaces GenVM's entire web config with an incomplete
+  # localhost-only fragment. Restore official required fields in a CI override.
+  jsonrpc:
+    volumes:
+      - ${GITHUB_WORKSPACE}/.github/genvm-web-local.yaml:/genvm/config/genvm-module-web.yaml:ro
