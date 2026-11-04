@@ -2,7 +2,12 @@
 # current GenLayer database migration reads individual DB* variables.
 # All services are ephemeral on a GitHub-hosted Docker runner.
 services:
+  # Keep schema migration, RPC and worker on the same upstream release line.
+  # The legacy CLI supplies v0.121.25 JSON-RPC (GenVM 0.2) while the
+  # worker comes from :latest (v0.3-capable): this rejected the contract
+  # with invalid_contract even after validator consensus.
   database-migration:
+    image: yeagerai/simulator-database-migration:latest
     environment:
       DBUSER: ${DBUSER:-postgres}
       DBPASSWORD: ${DBPASSWORD:-postgres}
@@ -16,6 +21,7 @@ services:
   # Upstream CLI replaces GenVM's entire web config with an incomplete
   # localhost-only fragment. Restore official required fields in a CI override.
   jsonrpc:
+    image: yeagerai/simulator-jsonrpc:latest
     environment:
       REDIS_URL: redis://redis:6379/0
     volumes:
