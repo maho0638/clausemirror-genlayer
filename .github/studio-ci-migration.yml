@@ -46,6 +46,10 @@ services:
       WEBDRIVERPORT: "4444"
       REDIS_URL: redis://redis:6379/0
       LOG_LEVEL: info
+      # The worker creates ConsensusService/Web3ConnectionPool separately from
+      # JSON-RPC. With no HARDHAT_URL, that pool returns None and every tx fails.
+      HARDHAT_URL: http://hardhat
+      HARDHAT_PORT: "8545"
     depends_on:
       database-migration:
         condition: service_completed_successfully
