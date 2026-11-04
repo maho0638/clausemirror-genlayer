@@ -9,3 +9,7 @@ services:
       DBHOST: postgres
       DBPORT: "5432"
       DBNAME: ${DBNAME:-genlayer_state}
+  # The stable v0.121.25 release does not publish a matching hardhat tag.
+  # Keep the optional dev-chain service on its existing published tag.
+  hardhat:
+    image: yeagerai/simulator-hardhat:latest
