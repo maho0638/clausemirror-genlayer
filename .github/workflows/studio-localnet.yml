@@ -61,26 +61,26 @@ jobs:
           # Legacy CLI .env defaults to 61999 (hosted Studionet), NOT localnet 61127.
           # Bind both Hardhat and RPC to localnet; never relax the chain-ID gate.
           cat >> "${CLI_DIR}/.env" <<'LOCAL_ENV'
-GENLAYER_CHAIN_ID=61127
-HARDHAT_CHAIN_ID=61127
-LOCAL_ENV
+          GENLAYER_CHAIN_ID=61127
+          HARDHAT_CHAIN_ID=61127
+          LOCAL_ENV
           # The legacy CLI Compose does not pass chain IDs to all services.
           # Add a CI-generated final override, rather than changing production files.
           cat > "${RUNNER_TEMP}/clausemirror-local-chain.yml" <<'LOCAL_COMPOSE'
-services:
-  hardhat:
-    environment:
-      GENLAYER_CHAIN_ID: "61127"
-      HARDHAT_CHAIN_ID: "61127"
-  jsonrpc:
-    environment:
-      GENLAYER_CHAIN_ID: "61127"
-      HARDHAT_CHAIN_ID: "61127"
-  consensus-worker:
-    environment:
-      GENLAYER_CHAIN_ID: "61127"
-      HARDHAT_CHAIN_ID: "61127"
-LOCAL_COMPOSE
+          services:
+            hardhat:
+              environment:
+                GENLAYER_CHAIN_ID: "61127"
+                HARDHAT_CHAIN_ID: "61127"
+            jsonrpc:
+              environment:
+                GENLAYER_CHAIN_ID: "61127"
+                HARDHAT_CHAIN_ID: "61127"
+            consensus-worker:
+              environment:
+                GENLAYER_CHAIN_ID: "61127"
+                HARDHAT_CHAIN_ID: "61127"
+          LOCAL_COMPOSE
           echo "COMPOSE_FILE=${CLI_DIR}/docker-compose.yml:${CLI_DIR}/docker-compose.override.yml:${GITHUB_WORKSPACE}/.github/studio-ci-migration.yml:${RUNNER_TEMP}/clausemirror-local-chain.yml" >> "$GITHUB_ENV"
           echo "LOCALNETVERSION=v0.121.25" >> "$GITHUB_ENV"
 
