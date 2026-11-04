@@ -51,6 +51,14 @@ jobs:
           genlayer --version
           python -m pip install --pre pytest cloudpickle 'genlayer-test==0.30.0rc2'
 
+      - name: Bridge outdated CLI database-migration environment (CI only)
+        run: |
+          CLI_DIR="$(npm root -g)/genlayer"
+          # The CLI creates its own override before invoking Docker Compose.
+          # Append a SECOND override supplying the DB* vars used by Alembic.
+          echo "COMPOSE_FILE=${CLI_DIR}/docker-compose.yml:${CLI_DIR}/docker-compose.override.yml:${GITHUB_WORKSPACE}/.github/studio-ci-migration.yml" >> "$GITHUB_ENV"
+          echo "LOCALNETVERSION=v0.121.25" >> "$GITHUB_ENV"
+
       - name: Start disposable headless Studio without interactive init
         timeout-minutes: 14
         run: |
