@@ -163,6 +163,13 @@ jobs:
             echo "$response" | grep -q 0xeec7
           '
           echo "Verified worker-container connectivity to local Hardhat chain 61127"
+          # SDK pin diagnosis: a missing GenVM runner is a runtime/version
+          # mismatch, not a verdict or application-level contract failure.
+          docker exec genlayer-consensus-worker-1 sh -c '
+            echo "Studio GenVM release: $(head -n 1 /genvm/version 2>/dev/null || echo unknown)"
+            echo "Available pinned py-genlayer runners:"
+            find /genvm -type f -path "*py-genlayer*" 2>/dev/null | head -20 || true
+          '
           # The legacy 'up' often aborts before reaching --reset-validators.
           # Seed deterministic mocked validators as in the official Studio
           # integration tests. Random validator creation requires live LLM
