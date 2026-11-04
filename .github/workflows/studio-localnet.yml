@@ -54,7 +54,7 @@ jobs:
       - name: Initialize disposable five-validator GenLayer Studio
         timeout-minutes: 14
         run: |
-          timeout 780s genlayer init --headless --numValidators 5 --reset-db
+          timeout 780s genlayer init --headless --numValidators 5
           timeout 240s genlayer up --headless --numValidators 5
 
       - name: Require healthy LOCALNET with correct chain ID
