@@ -20,6 +20,10 @@ jobs:
 
   genvm-lint:
     runs-on: ubuntu-latest
+    env:
+      # Official release v0.6.0-rc10 contains the pinned SDK 0.3 runner.
+      # Avoid GitHub release-discovery rate-limit fallback to obsolete rc3.
+      GENVM_VERSION: v0.6.0-rc10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
