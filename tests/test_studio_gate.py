@@ -20,8 +20,8 @@ pytestmark = pytest.mark.skipif(
 def _fix_studio_localnet_evm_gas_estimate(monkeypatch):
     """CI-only workaround for Studio v0.121.25's hardcoded 500k gas estimate.
 
-    The RPC eth_estimateGas method always returns 0x7a120, which is too low
-    for a large ClauseMirror addTransaction calldata containing 5 validators.
+    The RPC eth_estimateGas method always returns 0x7a120; 5m was also
+    insufficient for addTransaction. 20m is below the 30m local block limit.
     This never patches the contract or SDK on public networks.
     """
     from genlayer_py.contracts import actions
@@ -33,7 +33,7 @@ def _fix_studio_localnet_evm_gas_estimate(monkeypatch):
         assert client.chain.id == 61127, "Studio gas override is forbidden off disposable localnet"
         tx = original(*args, **kwargs)
         given = int(tx["gas"], 16) if isinstance(tx["gas"], str) else int(tx["gas"])
-        tx["gas"] = hex(max(given, 5_000_000))
+        tx["gas"] = hex(max(given, 20_000_000))
         print(f"CI localnet EVM gas estimate adjusted: {given} -> {int(tx['gas'], 16)}")
         return tx
 
