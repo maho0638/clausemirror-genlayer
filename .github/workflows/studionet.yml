@@ -1,9 +1,7 @@
 name: ClauseMirror live Studionet deployment proof
 
 on:
-  push:
-    paths:
-      - '.github/workflows/studionet.yml'
+  # Manual only: avoids unintentional repeat contract deployments / test GEN fees.
   workflow_dispatch:
 
 permissions:
