@@ -64,13 +64,16 @@ jobs:
         run: |
           # Official CLI init always prompts, including on fresh CI runners.
           # Post-install created the .env; this starts Docker without prompts.
-          timeout 780s genlayer up --headless --numValidators 5
+          # CLI may exit on an early socket hangup while the actual JSON-RPC
+          # container is still starting; the next step is the strict gate.
+          timeout 780s genlayer up --headless --numValidators 5 || echo "::warning::CLI returned before JSON-RPC health; verifying localhost separately"
+          docker ps -a --format 'table {{.Names}}\t{{.Status}}'
 
       - name: Require healthy LOCALNET with correct chain ID
-        timeout-minutes: 5
+        timeout-minutes: 8
         run: |
           printf '%s\n' 'Waiting for a local RPC at 127.0.0.1:4000 (no remote fallback)'
-          for n in $(seq 1 55); do
+          for n in $(seq 1 85); do
             if curl --silent --show-error --max-time 3 \
               -H 'Content-Type: application/json' \
               --data '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' \
@@ -102,6 +105,8 @@ jobs:
           docker ps -a --format 'table {{.Names}}\t{{.Status}}' || true
           echo "--- Failed database migration logs (latest 100 lines) ---"
           docker logs --tail 100 genlayer-database-migration-1 2>&1 || true
+          echo "--- JSON-RPC logs (latest 140 lines) ---"
+          docker logs --tail 140 genlayer-jsonrpc-1 2>&1 || true
           echo "--- Postgres logs (latest 40 lines) ---"
           docker logs --tail 40 genlayer-postgres-1 2>&1 || true
           echo "--- Hardhat logs (latest 20 lines) ---"
