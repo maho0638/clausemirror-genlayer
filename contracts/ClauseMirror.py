@@ -1,4 +1,5 @@
-# { "Depends": "py-genlayer:babwp9t37jw9g4j2bccgn14g6x7x9s1f7dsmh7emvz735pz4zxa0" }
+# v0.3.0
+# { "Depends": "py-genlayer:9b8kjyda2ycxyq4ea6g4yfpnydxhd52gqba5rb8dw7krkh5mn9p0" }
 """ClauseMirror: immutable, public multilingual clause comparison receipts.
 
 The human-readable leader note is NOT an independently ratified legal finding.
