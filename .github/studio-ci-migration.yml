@@ -38,6 +38,10 @@ services:
       DBNAME: ${DBNAME:-genlayer_state}
       WORKER_PORT: "4001"
       WORKER_POLL_INTERVAL: "5"
+      # The official Studio ConsensusAlgorithm reads these from os.environ[]
+      # (not from frontend defaults). The legacy CLI never supplied them.
+      VITE_FINALITY_WINDOW: "30"
+      VITE_FINALITY_WINDOW_APPEAL_FAILED_REDUCTION: "0.2"
       WEBDRIVERHOST: webdriver
       WEBDRIVERPORT: "4444"
       REDIS_URL: redis://redis:6379/0
