@@ -60,3 +60,81 @@ jobs:
         run: python -m pip install --pre pytest cloudpickle httpx2 'genlayer-test[sim]==0.30.0rc2'
       - name: Isolated RPC persistence and authorization checks (not GenVM)
         run: python -m pytest tests/test_glsim_rpc.py -q
+
+  isolated-studio-genvm:
+    # Explicitly authorized isolated LOCALNET trial, not remote studionet.
+    if: github.event_name == 'pull_request' && github.head_ref == 'audit/studio-gate-and-rpc-regression-20261104'
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    env:
+      CI: "true"
+      NO_COLOR: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify temporary Docker runner
+        run: |
+          docker version
+          docker info --format 'Docker server version {{.ServerVersion}}'
+          df -h /
+          free -m
+
+      - name: Install official local GenLayer CLI and Python Studio harness
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libsecret-1-0
+          npm install -g genlayer@0.39.1
+          genlayer --version
+          python -m pip install --pre pytest cloudpickle 'genlayer-test==0.30.0rc2'
+
+      - name: Initialize disposable five-validator GenLayer Studio
+        timeout-minutes: 14
+        run: |
+          timeout 780s genlayer init --headless --numValidators 5 --reset-db
+          timeout 240s genlayer up --headless --numValidators 5
+
+      - name: Require healthy LOCALNET with correct chain ID
+        timeout-minutes: 5
+        run: |
+          printf '%s\n' 'Waiting for a local RPC at 127.0.0.1:4000 (no remote fallback)'
+          for n in $(seq 1 55); do
+            if curl --silent --show-error --max-time 3 \
+              -H 'Content-Type: application/json' \
+              --data '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' \
+              http://127.0.0.1:4000/api > /tmp/genlayer-chain.json; then
+              cat /tmp/genlayer-chain.json
+              if python -c 'import json; d=json.load(open("/tmp/genlayer-chain.json")); assert d.get("result") in ("0xeec7", "0xEEC7")'; then
+                echo "Confirmed local GenLayer chain 61127"
+                exit 0
+              fi
+            fi
+            sleep 5
+          done
+          echo "::error::Genuine Studio localnet never became healthy"
+          exit 1
+
+      - name: Verify genuine GenVM five-validator local Studio transactions
+        timeout-minutes: 7
+        env:
+          CLAUSEMIRROR_ENABLE_STUDIO_TESTS: "1"
+        run: |
+          timeout 390s gltest tests/test_studio_gate.py -v -s --network localnet --default-wait-interval 1500 --default-wait-retries 30
+
+      - name: Capture local Studio diagnostic summary
+        if: always()
+        run: |
+          echo "--- Running containers ---"
+          docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' || true
+          echo "--- Exited containers ---"
+          docker ps -a --format 'table {{.Names}}\t{{.Status}}' || true
+          echo "--- Toolchain ---"
+          genlayer --version || true
+          echo "No remote or public network transactions were authorized."
