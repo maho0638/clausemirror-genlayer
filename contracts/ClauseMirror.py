@@ -17,7 +17,16 @@ def check_text(value: str, limit: int) -> str:
     require(isinstance(value, str), "Expected text")
     value = value.strip()
     require(2 <= len(value) <= limit, "Invalid text length")
-    require(all(ord(c) >= 32 and ord(c) != 127 for c in value), "Invalid control character")
+    require(all(
+        ord(c) >= 32
+        and not (0x7F <= ord(c) <= 0x9F)
+        and not (0xD800 <= ord(c) <= 0xDFFF)
+        and not (0x200B <= ord(c) <= 0x200F)
+        and not (0x202A <= ord(c) <= 0x202E)
+        and not (0x2060 <= ord(c) <= 0x2069)
+        and ord(c) != 0xFEFF
+        for c in value
+    ), "Invalid control character")
     return value
 
 
