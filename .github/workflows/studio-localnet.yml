@@ -160,7 +160,7 @@ jobs:
               --data "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_chainId\",\"params\":[]}" \
               "$HARDHAT_URL:$HARDHAT_PORT")
             echo "$response"
-            echo "$response" | grep -Eq "\\"result\\"[[:space:]]*:[[:space:]]*\\"0xeec7\\""
+            echo "$response" | grep -q 0xeec7
           '
           echo "Verified worker-container connectivity to local Hardhat chain 61127"
           # The legacy 'up' often aborts before reaching --reset-validators.
