@@ -115,10 +115,22 @@ jobs:
           exit 1
 
       - name: Bring up consensus worker and prove five local validators
-        timeout-minutes: 5
+        timeout-minutes: 7
         run: |
-          # Legacy Docker Compose can leave worker merely 'Created' while RPC
-          # warms up; start it only after RPC passed strict 61127 chain check.
+          # JSON-RPC can respond to eth_chainId before its Docker healthcheck
+          # changes from 'unhealthy' to 'healthy'. Compose refuses to start
+          # worker dependencies until Docker reports a healthy RPC container.
+          # Keep the strict chain check from the previous step.
+          for n in $(seq 1 60); do
+            rpc_health="$(docker inspect -f '{{.State.Health.Status}}' genlayer-jsonrpc-1)"
+            if [ "$rpc_health" = "healthy" ]; then
+              echo "Docker reports JSON-RPC healthy"
+              break
+            fi
+            echo "Waiting for JSON-RPC Docker health (attempt $n): $rpc_health"
+            sleep 5
+          done
+          test "$(docker inspect -f '{{.State.Health.Status}}' genlayer-jsonrpc-1)" = "healthy"
           docker compose -p genlayer up -d consensus-worker
           for n in $(seq 1 24); do
             if [ "$(docker inspect -f '{{.State.Running}}' genlayer-consensus-worker-1 2>/dev/null)" = "true" ]; then
