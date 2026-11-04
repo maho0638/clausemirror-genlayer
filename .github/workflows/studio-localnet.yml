@@ -151,14 +151,18 @@ jobs:
           test "$(docker inspect -f '{{.State.Health.Status}}' genlayer-consensus-worker-1)" = "healthy"
           # Catch the formerly silent 'NoneType is_connected' crash before
           # writing any consensus transactions to the disposable local chain.
-          docker exec genlayer-consensus-worker-1 python -c '
-          from backend.rollup.web3_pool import Web3ConnectionPool
-          web3 = Web3ConnectionPool.get()
-          assert web3 is not None, "Worker lacks HARDHAT_URL"
-          assert web3.is_connected(), "Worker cannot reach local Hardhat"
-          assert web3.eth.chain_id == 61127, f"Unexpected worker chain: {web3.eth.chain_id}"
-          print("Verified consensus worker Web3 connectivity to local chain 61127")
+          # The worker production image does not expose 'python' on PATH.
+          # Check the *actual container network* via its shell + curl instead.
+          docker exec genlayer-consensus-worker-1 sh -c '
+            test "$HARDHAT_URL" = "http://hardhat" || exit 1
+            response=$(curl --fail --silent --show-error --max-time 10 \
+              -H "Content-Type: application/json" \
+              --data "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_chainId\",\"params\":[]}" \
+              "$HARDHAT_URL:$HARDHAT_PORT")
+            echo "$response"
+            echo "$response" | grep -Eq "\\"result\\"[[:space:]]*:[[:space:]]*\\"0xeec7\\""
           '
+          echo "Verified worker-container connectivity to local Hardhat chain 61127"
           # The legacy 'up' often aborts before reaching --reset-validators.
           # Seed deterministic mocked validators as in the official Studio
           # integration tests. Random validator creation requires live LLM
