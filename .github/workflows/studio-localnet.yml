@@ -58,7 +58,30 @@ jobs:
           CLI_DIR="$(npm root -g)/genlayer"
           # The CLI creates its own override before invoking Docker Compose.
           # Append a SECOND override supplying the DB* vars used by Alembic.
-          echo "COMPOSE_FILE=${CLI_DIR}/docker-compose.yml:${CLI_DIR}/docker-compose.override.yml:${GITHUB_WORKSPACE}/.github/studio-ci-migration.yml" >> "$GITHUB_ENV"
+          # Legacy CLI .env defaults to 61999 (hosted Studionet), NOT localnet 61127.
+          # Bind both Hardhat and RPC to localnet; never relax the chain-ID gate.
+          cat >> "${CLI_DIR}/.env" <<'LOCAL_ENV'
+GENLAYER_CHAIN_ID=61127
+HARDHAT_CHAIN_ID=61127
+LOCAL_ENV
+          # The legacy CLI Compose does not pass chain IDs to all services.
+          # Add a CI-generated final override, rather than changing production files.
+          cat > "${RUNNER_TEMP}/clausemirror-local-chain.yml" <<'LOCAL_COMPOSE'
+services:
+  hardhat:
+    environment:
+      GENLAYER_CHAIN_ID: "61127"
+      HARDHAT_CHAIN_ID: "61127"
+  jsonrpc:
+    environment:
+      GENLAYER_CHAIN_ID: "61127"
+      HARDHAT_CHAIN_ID: "61127"
+  consensus-worker:
+    environment:
+      GENLAYER_CHAIN_ID: "61127"
+      HARDHAT_CHAIN_ID: "61127"
+LOCAL_COMPOSE
+          echo "COMPOSE_FILE=${CLI_DIR}/docker-compose.yml:${CLI_DIR}/docker-compose.override.yml:${GITHUB_WORKSPACE}/.github/studio-ci-migration.yml:${RUNNER_TEMP}/clausemirror-local-chain.yml" >> "$GITHUB_ENV"
           echo "LOCALNETVERSION=v0.121.25" >> "$GITHUB_ENV"
 
       - name: Start disposable headless Studio without interactive init
@@ -68,7 +91,7 @@ jobs:
           # Post-install created the .env; this starts Docker without prompts.
           # CLI may exit on an early socket hangup while the actual JSON-RPC
           # container is still starting; the next step is the strict gate.
-          timeout 780s genlayer up --headless --numValidators 5 || echo "::warning::CLI returned before JSON-RPC health; verifying localhost separately"
+          timeout 780s genlayer up --headless --reset-validators --numValidators 5 || echo "::warning::CLI returned before JSON-RPC health; verifying localhost separately"
           docker ps -a --format 'table {{.Names}}\t{{.Status}}'
 
       - name: Require healthy LOCALNET with correct chain ID
@@ -91,6 +114,46 @@ jobs:
           echo "::error::Genuine Studio localnet never became healthy"
           exit 1
 
+      - name: Bring up consensus worker and prove five local validators
+        timeout-minutes: 5
+        run: |
+          # Legacy Docker Compose can leave worker merely 'Created' while RPC
+          # warms up; start it only after RPC passed strict 61127 chain check.
+          docker compose -p genlayer up -d consensus-worker
+          for n in $(seq 1 24); do
+            if [ "$(docker inspect -f '{{.State.Running}}' genlayer-consensus-worker-1 2>/dev/null)" = "true" ]; then
+              echo "Consensus worker container is running"
+              break
+            fi
+            sleep 5
+          done
+          test "$(docker inspect -f '{{.State.Running}}' genlayer-consensus-worker-1)" = "true"
+          # The legacy 'up' often aborts before reaching --reset-validators.
+          # Query the real local RPC, create only missing isolated validators,
+          # then assert exactly five. No live provider calls are made here.
+          python - <<'PY'
+          import json
+          from urllib.request import Request, urlopen
+
+          def rpc(method, params=None):
+              body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params or []}).encode()
+              request = Request("http://127.0.0.1:4000/api", body, {"Content-Type": "application/json"})
+              with urlopen(request, timeout=25) as response:
+                  output = json.load(response)
+              if "error" in output:
+                  raise RuntimeError(f"{method}: {output['error']}")
+              return output["result"]
+
+          count = int(rpc("sim_countValidators"))
+          print(f"Validators before local bootstrap: {count}")
+          if count == 0:
+              print("Creating 5 LOCAL validators for mocked Studio tests")
+              rpc("sim_createRandomValidators", [5, 1, 10, [], []])
+              count = int(rpc("sim_countValidators"))
+          print(f"Validators after local bootstrap: {count}")
+          assert count == 5, f"Expected exactly five local validators, got {count}"
+          PY
+
       - name: Verify genuine GenVM five-validator local Studio transactions
         timeout-minutes: 7
         env:
@@ -109,6 +172,13 @@ jobs:
           docker logs --tail 100 genlayer-database-migration-1 2>&1 || true
           echo "--- JSON-RPC logs (latest 140 lines) ---"
           docker logs --tail 140 genlayer-jsonrpc-1 2>&1 || true
+          echo "--- Consensus worker logs (latest 120 lines) ---"
+          docker logs --tail 120 genlayer-consensus-worker-1 2>&1 || true
+          echo "--- RPC chain and validator count ---"
+          curl --silent --show-error --max-time 5 -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}' http://127.0.0.1:4000/api || true
+          echo
+          curl --silent --show-error --max-time 5 -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","id":2,"method":"sim_countValidators","params":[]}' http://127.0.0.1:4000/api || true
+          echo
           echo "--- Postgres logs (latest 40 lines) ---"
           docker logs --tail 40 genlayer-postgres-1 2>&1 || true
           echo "--- Hardhat logs (latest 20 lines) ---"
