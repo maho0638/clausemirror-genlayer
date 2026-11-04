@@ -16,6 +16,30 @@ pytestmark = pytest.mark.skipif(
     reason="No authorization to deploy/run Studio transactions.",
 )
 
+@pytest.fixture(autouse=True)
+def _fix_studio_localnet_evm_gas_estimate(monkeypatch):
+    """CI-only workaround for Studio v0.121.25's hardcoded 500k gas estimate.
+
+    The RPC eth_estimateGas method always returns 0x7a120, which is too low
+    for a large ClauseMirror addTransaction calldata containing 5 validators.
+    This never patches the contract or SDK on public networks.
+    """
+    from genlayer_py.contracts import actions
+
+    original = actions._prepare_transaction
+
+    def prepare(*args, **kwargs):
+        client = kwargs.get("self") or args[0]
+        assert client.chain.id == 61127, "Studio gas override is forbidden off disposable localnet"
+        tx = original(*args, **kwargs)
+        given = int(tx["gas"], 16) if isinstance(tx["gas"], str) else int(tx["gas"])
+        tx["gas"] = hex(max(given, 5_000_000))
+        print(f"CI localnet EVM gas estimate adjusted: {given} -> {int(tx['gas'], 16)}")
+        return tx
+
+    monkeypatch.setattr(actions, "_prepare_transaction", prepare)
+
+
 SOURCE = "The customer may cancel within 14 calendar days and receive a full refund."
 TARGET = "Müşteri 7 takvim günü içinde iptal ederek tam ücret iadesi alabilir."
 
@@ -40,7 +64,7 @@ def _fresh_case(context):
     from gltest.assertions import tx_execution_succeeded
 
     contract = get_contract_factory("ClauseMirror").deploy(
-        args=[], transaction_context=context, consensus_max_rotations=3
+        args=[], transaction_context=context, consensus_max_rotations=3, wait_retries=120
     )
     tx = contract.submit_pair(
         args=["en", "tr", SOURCE, TARGET, "Fictional public clause"]
